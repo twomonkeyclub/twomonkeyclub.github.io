@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 6.3.0">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+  <meta http-equiv="Cache-Control" content="no-transform">
+  <meta http-equiv="Cache-Control" content="no-siteapp">
+  <meta name="google-site-verification" content="5E43iLoOiBAt2mYWHsd7SW2nVGEtNqUQCoUfqMzZOmI">
+  <meta name="baidu-site-verification" content="code-8w3ZNUH4aI">
+
+<link rel="stylesheet" href="/css/main.css">
+
+<link rel="stylesheet" href="https://fonts.lug.ustc.edu.cn/css?family=Lato:300,300italic,400,400italic,700,700italic&display=swap&subset=latin,latin-ext">
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+  <link rel="stylesheet" href="/lib/pace/pace-theme-minimal.min.css">
+  <script src="/lib/pace/pace.min.js"></script>
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"2yuan.club","root":"/","scheme":"Mist","version":"7.8.0","exturl":true,"sidebar":{"position":"right","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":true,"show_result":true,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":true,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},"path":"search.xml"};
+  </script>
+
+  <meta name="description" content="TODO">
+<meta property="og:type" content="article">
+<meta property="og:title" content="【TinyWebServer】详解 - 04 http连接处理（上）">
+<meta property="og:url" content="https://2yuan.club/posts/5ad337c1/index.html">
+<meta property="og:site_name" content="两猿社">
+<meta property="og:description" content="TODO">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-10-11T22:41:49.000Z">
+<meta property="article:modified_time" content="2022-10-11T23:41:49.000Z">
+<meta property="article:author" content="两猿社·社长">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://2yuan.club/posts/5ad337c1/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>【TinyWebServer】详解 - 04 http连接处理（上） | 两猿社</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+<link rel="alternate" href="/atom.xml" title="两猿社" type="application/atom+xml">
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">两猿社</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">2Yuan·Club</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+        <i class="fa fa-search fa-fw fa-lg"></i>
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-web">
+
+    <a href="/web/" rel="section"><i class="fa fa-wifi fa-fw"></i>互联网</a>
+
+  </li>
+        <li class="menu-item menu-item-ic">
+
+    <a href="/ic/" rel="section"><i class="fa fa-th fa-fw"></i>半导体</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-calendar fa-fw"></i>分类<span class="badge">3</span></a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档<span class="badge">16</span></a>
+
+  </li>
+        <li class="menu-item menu-item-about">
+
+    <a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>关于</a>
+
+  </li>
+      <li class="menu-item menu-item-search">
+        <a role="button" class="popup-trigger"><i class="fa fa-search fa-fw"></i>搜索
+        </a>
+      </li>
+  </ul>
+</nav>
+
+
+
+  <div class="search-pop-overlay">
+    <div class="popup search-popup">
+        <div class="search-header">
+  <span class="search-icon">
+    <i class="fa fa-search"></i>
+  </span>
+  <div class="search-input-container">
+    <input autocomplete="off" autocapitalize="off"
+           placeholder="搜索..." spellcheck="false"
+           type="search" class="search-input">
+  </div>
+  <span class="popup-btn-close">
+    <i class="fa fa-times-circle"></i>
+  </span>
+</div>
+<div id="search-result">
+  <div id="no-result">
+    <i class="fa fa-spinner fa-pulse fa-5x fa-fw"></i>
+  </div>
+</div>
+
+    </div>
+  </div>
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+  <span class="exturl github-corner" data-url="aHR0cHM6Ly9naXRodWIuY29tL3Fpbmd1b3lp" title="Follow me on GitHub" aria-label="Follow me on GitHub"><svg width="80" height="80" viewBox="0 0 250 250" aria-hidden="true"><path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z"></path><path d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2" fill="currentColor" style="transform-origin: 130px 106px;" class="octo-arm"></path><path d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z" fill="currentColor" class="octo-body"></path></svg></span>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://2yuan.club/posts/5ad337c1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/cat.jpg">
+      <meta itemprop="name" content="两猿社·社长">
+      <meta itemprop="description" content="分享有趣的想法和项目">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="两猿社">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          【TinyWebServer】详解 - 04 http连接处理（上）
+        </h1>
+
+        <div class="post-meta">
+          
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2022-10-11 22:41:49 / 修改时间：23:41:49" itemprop="dateCreated datePublished" datetime="2022-10-11T22:41:49+00:00">2022-10-11</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/TinyWebServer/" itemprop="url" rel="index"><span itemprop="name">TinyWebServer</span></a>
+                </span>
+            </span>
+
+          
+            <span class="post-meta-item" title="阅读次数" id="busuanzi_container_page_pv" style="display: none;">
+              <span class="post-meta-item-icon">
+                <i class="fa fa-eye"></i>
+              </span>
+              <span class="post-meta-item-text">阅读次数：</span>
+              <span id="busuanzi_value_page_pv"></span>
+            </span>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>TODO</p>
+<span id="more"></span>
+<h3 id="本文内容"><a href="#本文内容" class="headerlink" title="本文内容"></a>本文内容</h3><p>在服务器项目中，http请求的处理与响应至关重要，关系到用户界面的跳转与反馈。这里，社长将其分为上、中、下三个部分来讲解，具体的：</p>
+<ul>
+<li>上篇，梳理基础知识，结合代码分析http类及请求接收</li>
+<li>中篇，结合代码分析请求报文解析</li>
+<li>下篇，结合代码分析请求报文响应</li>
+</ul>
+<p><code>基础知识方面</code>，包括epoll、HTTP报文格式、状态码和有限状态机。</p>
+<p><code>代码分析方面</code>，首先对服务器端处理http请求的全部流程进行简要介绍，然后结合代码对http类及请求接收进行详细分析。</p>
+<h3 id="epoll"><a href="#epoll" class="headerlink" title="epoll"></a>epoll</h3><p>epoll涉及的知识较多，这里仅对API和基础知识作介绍。更多资料请查阅资料，或查阅<code>游双的Linux高性能服务器编程 第9章 I/O复用</code></p>
+<h4 id="epoll-create函数"><a href="#epoll-create函数" class="headerlink" title="epoll_create函数"></a><strong><span  style="color: #00ACC1; ">epoll_create函数</span></strong></h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/epoll.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">epoll_create</span><span class="params">(<span class="type">int</span> size)</span></span></span><br></pre></td></tr></table></figure>
+<p>创建一个指示epoll内核事件表的文件描述符，该描述符将用作其他epoll系统调用的第一个参数，size不起作用。</p>
+<h4 id="epoll-ctl函数"><a href="#epoll-ctl函数" class="headerlink" title="epoll_ctl函数"></a><strong><span  style="color: #00ACC1; ">epoll_ctl函数</span></strong></h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/epoll.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">epoll_ctl</span><span class="params">(<span class="type">int</span> epfd, <span class="type">int</span> op, <span class="type">int</span> fd, <span class="keyword">struct</span> epoll_event *event)</span></span></span><br></pre></td></tr></table></figure>
+<p>该函数用于操作内核事件表监控的文件描述符上的事件：注册、修改、删除</p>
+<ul>
+<li>epfd：为epoll_creat的句柄</li>
+<li>op：表示动作，用3个宏来表示：<ul>
+<li>EPOLL_CTL_ADD (注册新的fd到epfd)，</li>
+<li>EPOLL_CTL_MOD (修改已经注册的fd的监听事件)，</li>
+<li>EPOLL_CTL_DEL (从epfd删除一个fd)；</li>
+</ul>
+</li>
+<li>event：告诉内核需要监听的事件</li>
+</ul>
+<p>上述event是epoll_event结构体指针类型，表示内核所监听的事件，具体定义如下：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> <span class="title class_">epoll_event</span> &#123;</span><br><span class="line"><span class="type">__uint32_t</span> events; <span class="comment">/* Epoll events */</span></span><br><span class="line"><span class="type">epoll_data_t</span> data; <span class="comment">/* User data variable */</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>events描述事件类型，其中epoll事件类型有以下几种<ul>
+<li>EPOLLIN：表示对应的文件描述符可以读（包括对端SOCKET正常关闭）</li>
+<li>EPOLLOUT：表示对应的文件描述符可以写</li>
+<li>EPOLLPRI：表示对应的文件描述符有紧急的数据可读（这里应该表示有带外数据到来）</li>
+<li>EPOLLERR：表示对应的文件描述符发生错误</li>
+<li>EPOLLHUP：表示对应的文件描述符被挂断；</li>
+<li>EPOLLET：将EPOLL设为边缘触发(Edge Triggered)模式，这是相对于水平触发(Level Triggered)而言的</li>
+<li>EPOLLONESHOT：只监听一次事件，当监听完这次事件之后，如果还需要继续监听这个socket的话，需要再次把这个socket加入到EPOLL队列里</li>
+</ul>
+</li>
+</ul>
+<h4 id="epoll-wait函数"><a href="#epoll-wait函数" class="headerlink" title="epoll_wait函数"></a><strong><span  style="color: #00ACC1; ">epoll_wait函数</span></strong></h4><figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/epoll.h&gt;</span></span></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">epoll_wait</span><span class="params">(<span class="type">int</span> epfd, <span class="keyword">struct</span> epoll_event *events, <span class="type">int</span> maxevents, <span class="type">int</span> timeout)</span></span></span><br></pre></td></tr></table></figure>
+
+<p>该函数用于等待所监控文件描述符上有事件的产生，返回就绪的文件描述符个数</p>
+<ul>
+<li>events：用来存内核得到事件的集合，</li>
+<li>maxevents：告之内核这个events有多大，这个maxevents的值不能大于创建epoll_create()时的size，</li>
+<li>timeout： 是超时时间<ul>
+<li>-1：阻塞</li>
+<li>0：立即返回，非阻塞</li>
+<li><blockquote>
+<p>0：指定毫秒</p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li>返回值：成功返回有多少文件描述符就绪，时间到时返回0，出错返回-1</li>
+</ul>
+<h4 id="select-x2F-poll-x2F-epoll"><a href="#select-x2F-poll-x2F-epoll" class="headerlink" title="select&#x2F;poll&#x2F;epoll"></a><strong><span  style="color: #00ACC1; ">select&#x2F;poll&#x2F;epoll</span></strong></h4><ul>
+<li>调用函数<ul>
+<li>select和poll都是一个函数，epoll是一组函数</li>
+</ul>
+</li>
+<li>文件描述符数量<ul>
+<li>select通过线性表描述文件描述符集合，文件描述符有上限，一般是1024，但可以修改源码，重新编译内核，不推荐</li>
+<li>poll是链表描述，突破了文件描述符上限，最大可以打开文件的数目</li>
+<li>epoll通过红黑树描述，最大可以打开文件的数目，可以通过命令ulimit -n number修改，仅对当前终端有效</li>
+</ul>
+</li>
+<li>将文件描述符从用户传给内核<ul>
+<li>select和poll通过将所有文件描述符拷贝到内核态，每次调用都需要拷贝</li>
+<li>epoll通过epoll_create建立一棵红黑树，通过epoll_ctl将要监听的文件描述符注册到红黑树上</li>
+</ul>
+</li>
+<li>内核判断就绪的文件描述符<ul>
+<li>select和poll通过遍历文件描述符集合，判断哪个文件描述符上有事件发生</li>
+<li>epoll_create时，内核除了帮我们在epoll文件系统里建了个红黑树用于存储以后epoll_ctl传来的fd外，还会再建立一个list链表，用于存储准备就绪的事件，当epoll_wait调用时，仅仅观察这个list链表里有没有数据即可。</li>
+<li>epoll是根据每个fd上面的回调函数(中断函数)判断，只有发生了事件的socket才会主动的去调用 callback函数，其他空闲状态socket则不会，若是就绪事件，插入list</li>
+</ul>
+</li>
+<li>应用程序索引就绪文件描述符<ul>
+<li>select&#x2F;poll只返回发生了事件的文件描述符的个数，若知道是哪个发生了事件，同样需要遍历</li>
+<li>epoll返回的发生了事件的个数和结构体数组，结构体包含socket的信息，因此直接处理返回的数组即可</li>
+</ul>
+</li>
+<li>工作模式<ul>
+<li>select和poll都只能工作在相对低效的LT模式下</li>
+<li>epoll则可以工作在ET高效模式，并且epoll还支持EPOLLONESHOT事件，该事件能进一步减少可读、可写和异常事件被触发的次数。</li>
+</ul>
+</li>
+<li>应用场景<ul>
+<li>当所有的fd都是活跃连接，使用epoll，需要建立文件系统，红黑书和链表对于此来说，效率反而不高，不如selece和poll</li>
+<li>当监测的fd数目较小，且各个fd都比较活跃，建议使用select或者poll</li>
+<li>当监测的fd数目非常大，成千上万，且单位时间只有其中的一部分fd处于就绪状态，这个时候使用epoll能够明显提升性能</li>
+</ul>
+</li>
+</ul>
+<h4 id="ET、LT、EPOLLONESHOT"><a href="#ET、LT、EPOLLONESHOT" class="headerlink" title="ET、LT、EPOLLONESHOT"></a><strong><span  style="color: #00ACC1; ">ET、LT、EPOLLONESHOT</span></strong></h4><ul>
+<li>LT水平触发模式<ul>
+<li>epoll_wait检测到文件描述符有事件发生，则将其通知给应用程序，应用程序可以不立即处理该事件。</li>
+<li>当下一次调用epoll_wait时，epoll_wait还会再次向应用程序报告此事件，直至被处理</li>
+</ul>
+</li>
+<li>ET边缘触发模式<ul>
+<li>epoll_wait检测到文件描述符有事件发生，则将其通知给应用程序，应用程序必须立即处理该事件</li>
+<li>必须要一次性将数据读取完，使用非阻塞I&#x2F;O，读取到出现eagain</li>
+</ul>
+</li>
+<li>EPOLLONESHOT<ul>
+<li>一个线程读取某个socket上的数据后开始处理数据，在处理过程中该socket上又有新数据可读，此时另一个线程被唤醒读取，此时出现两个线程处理同一个socket</li>
+<li>我们期望的是一个socket连接在任一时刻都只被一个线程处理，通过epoll_ctl对该文件描述符注册epolloneshot事件，一个线程处理socket时，其他线程将无法处理，<strong>当该线程处理完后，需要通过epoll_ctl重置epolloneshot事件</strong></li>
+</ul>
+</li>
+</ul>
+<h3 id="HTTP报文格式"><a href="#HTTP报文格式" class="headerlink" title="HTTP报文格式"></a>HTTP报文格式</h3><p>HTTP报文分为请求报文和响应报文两种，每种报文必须按照特有格式生成，才能被浏览器端识别。</p>
+<p>其中，浏览器端向服务器发送的为请求报文，服务器处理后返回给浏览器端的为响应报文。</p>
+<h4 id="请求报文"><a href="#请求报文" class="headerlink" title="请求报文"></a><strong><span  style="color: #00ACC1; ">请求报文</span></strong></h4><p>HTTP请求报文由请求行（request line）、请求头部（header）、空行和请求数据四个部分组成。</p>
+<p>其中，请求分为两种，GET和POST，具体的：</p>
+<ul>
+<li><strong>GET</strong></li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">GET /<span class="number">562f</span>25980001b1b106000338.jpg HTTP/<span class="number">1.1</span></span><br><span class="line">Host:img.mukewang.com</span><br><span class="line">User-Agent:Mozilla/<span class="number">5.0</span> (Windows NT <span class="number">10.0</span>; WOW64)</span><br><span class="line">AppleWebKit/<span class="number">537.36</span> (KHTML, like Gecko) Chrome/<span class="number">51.0</span><span class="number">.2704</span><span class="number">.106</span> Safari/<span class="number">537.36</span></span><br><span class="line">Accept:image/webp,image<span class="comment">/*,*/</span>*;q=<span class="number">0.8</span></span><br><span class="line">Referer:http:<span class="comment">//www.imooc.com/</span></span><br><span class="line">Accept-Encoding:gzip, deflate, sdch</span><br><span class="line">Accept-Language:zh-CN,zh;q=<span class="number">0.8</span></span><br><span class="line">空行</span><br><span class="line">请求数据为空</span><br></pre></td></tr></table></figure>
+
+
+<ul>
+<li><strong>POST</strong></li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">POST / HTTP1<span class="number">.1</span></span><br><span class="line">Host:www.wrox.com</span><br><span class="line">User-Agent:Mozilla/<span class="number">4.0</span> (compatible; MSIE <span class="number">6.0</span>; Windows NT <span class="number">5.1</span>; SV1; .NET CLR <span class="number">2.0</span><span class="number">.50727</span>; .NET CLR <span class="number">3.0</span><span class="number">.04506</span><span class="number">.648</span>; .NET CLR <span class="number">3.5</span><span class="number">.21022</span>)</span><br><span class="line">Content-Type:application/x-www-form-urlencoded</span><br><span class="line">Content-Length:<span class="number">40</span></span><br><span class="line">Connection: Keep-Alive</span><br><span class="line">空行</span><br><span class="line">name=Professional%<span class="number">20</span>Ajax&amp;publisher=Wiley</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<ul>
+<li><strong>请求行</strong>，用来说明请求类型,要访问的资源以及所使用的HTTP版本。<br>GET说明请求类型为GET，&#x2F;562f25980001b1b106000338.jpg(URL)为要访问的资源，该行的最后一部分说明使用的是HTTP1.1版本。</li>
+<li><strong>请求头部</strong>，紧接着请求行（即第一行）之后的部分，用来说明服务器要使用的附加信息。<ul>
+<li>HOST，给出请求资源所在服务器的域名。</li>
+<li>User-Agent，HTTP客户端程序的信息，该信息由你发出请求使用的浏览器来定义,并且在每个请求中自动发送等。</li>
+<li>Accept，说明用户代理可处理的媒体类型。</li>
+<li>Accept-Encoding，说明用户代理支持的内容编码。</li>
+<li>Accept-Language，说明用户代理能够处理的自然语言集。</li>
+<li>Content-Type，说明实现主体的媒体类型。</li>
+<li>Content-Length，说明实现主体的大小。</li>
+<li>Connection，连接管理，可以是Keep-Alive或close。</li>
+</ul>
+</li>
+<li><strong>空行</strong>，请求头部后面的空行是必须的即使第四部分的请求数据为空，也必须有空行。</li>
+<li><strong>请求数据</strong>也叫主体，可以添加任意的其他数据。</li>
+</ul>
+</blockquote>
+<h4 id="响应报文"><a href="#响应报文" class="headerlink" title="响应报文"></a><strong><span  style="color: #00ACC1; ">响应报文</span></strong></h4><p>HTTP响应也由四个部分组成，分别是：状态行、消息报头、空行和响应正文。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">HTTP/<span class="number">1.1</span> <span class="number">200</span> OK</span><br><span class="line">Date: Fri, <span class="number">22</span> May <span class="number">2009</span> <span class="number">06</span>:<span class="number">07</span>:<span class="number">21</span> GMT</span><br><span class="line">Content-Type: text/html; charset=UTF<span class="number">-8</span></span><br><span class="line">空行</span><br><span class="line">&lt;html&gt;</span><br><span class="line">      &lt;head&gt;&lt;/head&gt;</span><br><span class="line">      &lt;body&gt;</span><br><span class="line">            &lt;!--body goes here--&gt;</span><br><span class="line">      &lt;/body&gt;</span><br><span class="line">&lt;/html&gt;</span><br></pre></td></tr></table></figure>
+<blockquote>
+<ul>
+<li>状态行，由HTTP协议版本号， 状态码， 状态消息 三部分组成。<br>第一行为状态行，（HTTP&#x2F;1.1）表明HTTP版本为1.1版本，状态码为200，状态消息为OK。</li>
+<li>消息报头，用来说明客户端要使用的一些附加信息。<br>第二行和第三行为消息报头，Date:生成响应的日期和时间；Content-Type:指定了MIME类型的HTML(text&#x2F;html),编码类型是UTF-8。</li>
+<li>空行，消息报头后面的空行是必须的。</li>
+<li>响应正文，服务器返回给客户端的文本信息。空行后面的html部分为响应正文。</li>
+</ul>
+</blockquote>
+<h3 id="HTTP状态码"><a href="#HTTP状态码" class="headerlink" title="HTTP状态码"></a>HTTP状态码</h3><p>HTTP有5种类型的状态码，具体的：</p>
+<ul>
+<li>1xx：指示信息–表示请求已接收，继续处理。</li>
+<li>2xx：成功–表示请求正常处理完毕。<ul>
+<li>200 OK：客户端请求被正常处理。</li>
+<li>206 Partial content：客户端进行了范围请求。</li>
+</ul>
+</li>
+<li>3xx：重定向–要完成请求必须进行更进一步的操作。<ul>
+<li>301 Moved Permanently：永久重定向，该资源已被永久移动到新位置，将来任何对该资源的访问都要使用本响应返回的若干个URI之一。</li>
+<li>302 Found：临时重定向，请求的资源现在临时从不同的URI中获得。</li>
+</ul>
+</li>
+<li>4xx：客户端错误–请求有语法错误，服务器无法处理请求。<ul>
+<li>400 Bad Request：请求报文存在语法错误。</li>
+<li>403 Forbidden：请求被服务器拒绝。</li>
+<li>404 Not Found：请求不存在，服务器上找不到请求的资源。</li>
+</ul>
+</li>
+<li>5xx：服务器端错误–服务器处理请求出错。 <ul>
+<li>500 Internal Server Error：服务器在执行请求时出现错误。</li>
+</ul>
+</li>
+</ul>
+<h3 id="有限状态机"><a href="#有限状态机" class="headerlink" title="有限状态机"></a>有限状态机</h3><p>有限状态机，是一种抽象的理论模型，它能够把有限个变量描述的状态变化过程，以可构造可验证的方式呈现出来。比如，封闭的有向图。</p>
+<p>有限状态机可以通过if-else,switch-case和函数指针来实现，从软件工程的角度看，主要是为了封装逻辑。</p>
+<p>带有状态转移的有限状态机示例代码。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">STATE_MACHINE</span>()&#123;</span><br><span class="line">    State cur_State = type_A;</span><br><span class="line">	<span class="keyword">while</span>(cur_State != type_C)&#123;</span><br><span class="line">		Package _pack = <span class="built_in">getNewPackage</span>();</span><br><span class="line">		<span class="keyword">switch</span>()&#123;</span><br><span class="line">			<span class="keyword">case</span> type_A:</span><br><span class="line">				<span class="built_in">process_pkg_state_A</span>(_pack);</span><br><span class="line">				cur_State = type_B;</span><br><span class="line">				<span class="keyword">break</span>;</span><br><span class="line">			<span class="keyword">case</span> type_B:</span><br><span class="line">				<span class="built_in">process_pkg_state_B</span>(_pack);</span><br><span class="line">				cur_State = type_C;</span><br><span class="line">				<span class="keyword">break</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<p>该状态机包含三种状态：type_A，type_B和type_C。其中，type_A是初始状态，type_C是结束状态。</p>
+<p>状态机的当前状态记录在cur_State变量中，逻辑处理时，状态机先通过getNewPackage获取数据包，然后根据当前状态对数据进行处理，处理完后，状态机通过改变cur_State完成状态转移。</p>
+<p>有限状态机一种逻辑单元内部的一种高效编程方法，在服务器编程中，服务器可以根据不同状态或者消息类型进行相应的处理逻辑，使得程序逻辑清晰易懂。</p>
+<h3 id="http处理流程"><a href="#http处理流程" class="headerlink" title="http处理流程"></a>http处理流程</h3><p>首先对http报文处理的流程进行简要介绍，然后具体介绍http类的定义和服务器接收http请求的具体过程。</p>
+<h4 id="http报文处理流程"><a href="#http报文处理流程" class="headerlink" title="http报文处理流程"></a><strong><span  style="color: #00ACC1; ">http报文处理流程</span></strong></h4><ul>
+<li>浏览器端发出http连接请求，主线程创建http对象接收请求并将所有数据读入对应buffer，将该对象插入任务队列，工作线程从任务队列中取出一个任务进行处理。(<strong>本篇讲</strong>)</li>
+<li>工作线程取出任务后，调用process_read函数，通过主、从状态机对请求报文进行解析。(<strong>中篇讲</strong>)</li>
+<li>解析完之后，跳转do_request函数生成响应报文，通过process_write写入buffer，返回给浏览器端。(<strong>下篇讲</strong>)</li>
+</ul>
+<h4 id="http类"><a href="#http类" class="headerlink" title="http类"></a><strong><span  style="color: #00ACC1; ">http类</span></strong></h4><p>这一部分代码在TinyWebServer&#x2F;http&#x2F;http_conn.h中，主要是http类的定义。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">class</span> <span class="title class_">http_conn</span>&#123;</span><br><span class="line">    <span class="keyword">public</span>:</span><br><span class="line">		<span class="comment">//设置读取文件的名称m_real_file大小</span></span><br><span class="line">        <span class="type">static</span> <span class="type">const</span> <span class="type">int</span> FILENAME_LEN=<span class="number">200</span>;</span><br><span class="line">		<span class="comment">//设置读缓冲区m_read_buf大小</span></span><br><span class="line">        <span class="type">static</span> <span class="type">const</span> <span class="type">int</span> READ_BUFFER_SIZE=<span class="number">2048</span>;</span><br><span class="line">		<span class="comment">//设置写缓冲区m_write_buf大小</span></span><br><span class="line">        <span class="type">static</span> <span class="type">const</span> <span class="type">int</span> WRITE_BUFFER_SIZE=<span class="number">1024</span>;</span><br><span class="line">		<span class="comment">//报文的请求方法，本项目只用到GET和POST</span></span><br><span class="line">        <span class="keyword">enum</span> <span class="title class_">METHOD</span>&#123;GET=<span class="number">0</span>,POST,HEAD,PUT,DELETE,TRACE,OPTIONS,CONNECT,PATH&#125;;</span><br><span class="line">		<span class="comment">//主状态机的状态</span></span><br><span class="line">        <span class="keyword">enum</span> <span class="title class_">CHECK_STATE</span>&#123;CHECK_STATE_REQUESTLINE=<span class="number">0</span>,CHECK_STATE_HEADER,CHECK_STATE_CONTENT&#125;;</span><br><span class="line">		<span class="comment">//报文解析的结果</span></span><br><span class="line">        <span class="keyword">enum</span> <span class="title class_">HTTP_CODE</span>&#123;NO_REQUEST,GET_REQUEST,BAD_REQUEST,NO_RESOURCE,FORBIDDEN_REQUEST,FILE_REQUEST,INTERNAL_ERROR,CLOSED_CONNECTION&#125;;</span><br><span class="line">		<span class="comment">//从状态机的状态</span></span><br><span class="line">        <span class="keyword">enum</span> <span class="title class_">LINE_STATUS</span>&#123;LINE_OK=<span class="number">0</span>,LINE_BAD,LINE_OPEN&#125;;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span>:</span><br><span class="line">        <span class="built_in">http_conn</span>()&#123;&#125;</span><br><span class="line">        ~<span class="built_in">http_conn</span>()&#123;&#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span>:</span><br><span class="line">		<span class="comment">//初始化套接字地址，函数内部会调用私有方法init</span></span><br><span class="line">        <span class="function"><span class="type">void</span> <span class="title">init</span><span class="params">(<span class="type">int</span> sockfd,<span class="type">const</span> sockaddr_in &amp;addr)</span></span>;</span><br><span class="line">		<span class="comment">//关闭http连接</span></span><br><span class="line">        <span class="function"><span class="type">void</span> <span class="title">close_conn</span><span class="params">(<span class="type">bool</span> real_close=<span class="literal">true</span>)</span></span>;</span><br><span class="line">        <span class="function"><span class="type">void</span> <span class="title">process</span><span class="params">()</span></span>;</span><br><span class="line">		<span class="comment">//读取浏览器端发来的全部数据</span></span><br><span class="line">        <span class="function"><span class="type">bool</span> <span class="title">read_once</span><span class="params">()</span></span>;</span><br><span class="line">		<span class="comment">//响应报文写入函数</span></span><br><span class="line">        <span class="function"><span class="type">bool</span> <span class="title">write</span><span class="params">()</span></span>;</span><br><span class="line">		<span class="function">sockaddr_in *<span class="title">get_address</span><span class="params">()</span></span>&#123;</span><br><span class="line">			<span class="keyword">return</span> &amp;m_address;	</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="comment">//同步线程初始化数据库读取表</span></span><br><span class="line">		<span class="function"><span class="type">void</span> <span class="title">initmysql_result</span><span class="params">()</span></span>;</span><br><span class="line">		<span class="comment">//CGI使用线程池初始化数据库表</span></span><br><span class="line">    	<span class="function"><span class="type">void</span> <span class="title">initresultFile</span><span class="params">(connection_pool *connPool)</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span>:</span><br><span class="line">        <span class="function"><span class="type">void</span> <span class="title">init</span><span class="params">()</span></span>;</span><br><span class="line">		<span class="comment">//从m_read_buf读取，并处理请求报文</span></span><br><span class="line">        <span class="function">HTTP_CODE <span class="title">process_read</span><span class="params">()</span></span>;</span><br><span class="line">		<span class="comment">//向m_write_buf写入响应报文数据</span></span><br><span class="line">        <span class="function"><span class="type">bool</span> <span class="title">process_write</span><span class="params">(HTTP_CODE ret)</span></span>;</span><br><span class="line">		<span class="comment">//主状态机解析报文中的请求行数据</span></span><br><span class="line">        <span class="function">HTTP_CODE <span class="title">parse_request_line</span><span class="params">(<span class="type">char</span> *text)</span></span>;</span><br><span class="line">		<span class="comment">//主状态机解析报文中的请求头数据</span></span><br><span class="line">        <span class="function">HTTP_CODE <span class="title">parse_headers</span><span class="params">(<span class="type">char</span> *text)</span></span>;</span><br><span class="line">		<span class="comment">//主状态机解析报文中的请求内容</span></span><br><span class="line">        <span class="function">HTTP_CODE <span class="title">parse_content</span><span class="params">(<span class="type">char</span> *text)</span></span>;</span><br><span class="line">		<span class="comment">//生成响应报文</span></span><br><span class="line">        <span class="function">HTTP_CODE <span class="title">do_request</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">		<span class="comment">//m_start_line是已经解析的字符</span></span><br><span class="line">		<span class="comment">//get_line用于将指针向后偏移，指向未处理的字符</span></span><br><span class="line">        <span class="function"><span class="type">char</span>* <span class="title">get_line</span><span class="params">()</span></span>&#123;<span class="keyword">return</span> m_read_buf+m_start_line;&#125;;</span><br><span class="line"></span><br><span class="line">		<span class="comment">//从状态机读取一行，分析是请求报文的哪一部分</span></span><br><span class="line">        <span class="function">LINE_STATUS <span class="title">parse_line</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">        <span class="function"><span class="type">void</span> <span class="title">unmap</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">		<span class="comment">//根据响应报文格式，生成对应8个部分，以下函数均由do_request调用</span></span><br><span class="line">        <span class="function"><span class="type">bool</span> <span class="title">add_response</span><span class="params">(<span class="type">const</span> <span class="type">char</span>* format,...)</span></span>;</span><br><span class="line">        <span class="function"><span class="type">bool</span> <span class="title">add_content</span><span class="params">(<span class="type">const</span> <span class="type">char</span>* content)</span></span>;</span><br><span class="line">        <span class="function"><span class="type">bool</span> <span class="title">add_status_line</span><span class="params">(<span class="type">int</span> status,<span class="type">const</span> <span class="type">char</span>* title)</span></span>;</span><br><span class="line">        <span class="function"><span class="type">bool</span> <span class="title">add_headers</span><span class="params">(<span class="type">int</span> content_length)</span></span>;</span><br><span class="line">		<span class="function"><span class="type">bool</span> <span class="title">add_content_type</span><span class="params">()</span></span>;</span><br><span class="line">        <span class="function"><span class="type">bool</span> <span class="title">add_content_length</span><span class="params">(<span class="type">int</span> content_length)</span></span>;</span><br><span class="line">        <span class="function"><span class="type">bool</span> <span class="title">add_linger</span><span class="params">()</span></span>;</span><br><span class="line">        <span class="function"><span class="type">bool</span> <span class="title">add_blank_line</span><span class="params">()</span></span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span>:</span><br><span class="line">        <span class="type">static</span> <span class="type">int</span> m_epollfd;</span><br><span class="line">        <span class="type">static</span> <span class="type">int</span> m_user_count;</span><br><span class="line">		MYSQL *mysql;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span>:</span><br><span class="line">        <span class="type">int</span> m_sockfd;</span><br><span class="line">        sockaddr_in m_address;</span><br><span class="line"></span><br><span class="line">		<span class="comment">//存储读取的请求报文数据</span></span><br><span class="line">        <span class="type">char</span> m_read_buf[READ_BUFFER_SIZE];</span><br><span class="line">		<span class="comment">//缓冲区中m_read_buf中数据的最后一个字节的下一个位置</span></span><br><span class="line">        <span class="type">int</span> m_read_idx;</span><br><span class="line">		<span class="comment">//m_read_buf读取的位置m_checked_idx</span></span><br><span class="line">        <span class="type">int</span> m_checked_idx;</span><br><span class="line">		<span class="comment">//m_read_buf中已经解析的字符个数</span></span><br><span class="line">        <span class="type">int</span> m_start_line;</span><br><span class="line"></span><br><span class="line">		<span class="comment">//存储发出的响应报文数据</span></span><br><span class="line">        <span class="type">char</span> m_write_buf[WRITE_BUFFER_SIZE];</span><br><span class="line">		<span class="comment">//指示buffer中的长度</span></span><br><span class="line">        <span class="type">int</span> m_write_idx;</span><br><span class="line">		</span><br><span class="line">		<span class="comment">//主状态机的状态</span></span><br><span class="line">        CHECK_STATE m_check_state;</span><br><span class="line">		<span class="comment">//请求方法</span></span><br><span class="line">        METHOD m_method;</span><br><span class="line">		</span><br><span class="line">		<span class="comment">//以下为解析请求报文中对应的6个变量</span></span><br><span class="line">		<span class="comment">//存储读取文件的名称</span></span><br><span class="line">        <span class="type">char</span> m_real_file[FILENAME_LEN];</span><br><span class="line">        <span class="type">char</span> *m_url;</span><br><span class="line">        <span class="type">char</span> *m_version;</span><br><span class="line">        <span class="type">char</span> *m_host;</span><br><span class="line">        <span class="type">int</span> m_content_length;</span><br><span class="line">        <span class="type">bool</span> m_linger;</span><br><span class="line">		</span><br><span class="line">        <span class="type">char</span> *m_file_address;		<span class="comment">//读取服务器上的文件地址</span></span><br><span class="line">        <span class="keyword">struct</span> <span class="title class_">stat</span> m_file_stat;</span><br><span class="line">        <span class="keyword">struct</span> <span class="title class_">iovec</span> m_iv[<span class="number">2</span>];		<span class="comment">//io向量机制iovec</span></span><br><span class="line">        <span class="type">int</span> m_iv_count;</span><br><span class="line">		<span class="type">int</span> cgi;					<span class="comment">//是否启用的POST</span></span><br><span class="line">        <span class="type">char</span> *m_string;				<span class="comment">//存储请求头数据</span></span><br><span class="line">		<span class="type">int</span> bytes_to_send;			<span class="comment">//剩余发送字节数</span></span><br><span class="line">    	<span class="type">int</span> bytes_have_send;		<span class="comment">//已发送字节数</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>在http请求接收部分，会涉及到init和read_once函数，但init仅仅是对私有成员变量进行初始化，不用过多讲解。</p>
+<p>这里，对read_once进行介绍。read_once读取浏览器端发送来的请求报文，直到无数据可读或对方关闭连接，读取到m_read_buffer中，并更新m_read_idx。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">//循环读取客户数据，直到无数据可读或对方关闭连接</span></span><br><span class="line"><span class="function"><span class="type">bool</span> <span class="title">http_conn::read_once</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">if</span>(m_read_idx&gt;=READ_BUFFER_SIZE)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="type">int</span> bytes_read=<span class="number">0</span>;</span><br><span class="line">    <span class="keyword">while</span>(<span class="literal">true</span>)</span><br><span class="line">    &#123;</span><br><span class="line">		<span class="comment">//从套接字接收数据，存储在m_read_buf缓冲区</span></span><br><span class="line">        bytes_read=<span class="built_in">recv</span>(m_sockfd,m_read_buf+m_read_idx,READ_BUFFER_SIZE-m_read_idx,<span class="number">0</span>);</span><br><span class="line">        <span class="keyword">if</span>(bytes_read==<span class="number">-1</span>)</span><br><span class="line">        &#123;	</span><br><span class="line">			<span class="comment">//非阻塞ET模式下，需要一次性将数据读完</span></span><br><span class="line">            <span class="keyword">if</span>(errno==EAGAIN||errno==EWOULDBLOCK)</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span>(bytes_read==<span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">        &#125;</span><br><span class="line">		<span class="comment">//修改m_read_idx的读取字节数</span></span><br><span class="line">        m_read_idx+=bytes_read;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="epoll相关代码"><a href="#epoll相关代码" class="headerlink" title="epoll相关代码"></a><strong><span  style="color: #00ACC1; ">epoll相关代码</span></strong></h4><p>项目中epoll相关代码部分包括非阻塞模式、内核事件表注册事件、删除事件、重置EPOLLONESHOT事件四种。</p>
+<ul>
+<li>非阻塞模式</li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//对文件描述符设置非阻塞</span></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">setnonblocking</span><span class="params">(<span class="type">int</span> fd)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="type">int</span> old_option = <span class="built_in">fcntl</span>(fd, F_GETFL);</span><br><span class="line">    <span class="type">int</span> new_option = old_option | O_NONBLOCK;</span><br><span class="line">    <span class="built_in">fcntl</span>(fd, F_SETFL, new_option);</span><br><span class="line">    <span class="keyword">return</span> old_option;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>内核事件表注册新事件，开启EPOLLONESHOT，针对客户端连接的描述符，listenfd不用开启</li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">addfd</span><span class="params">(<span class="type">int</span> epollfd, <span class="type">int</span> fd, <span class="type">bool</span> one_shot)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    epoll_event event;</span><br><span class="line">    event.data.fd = fd;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> ET</span></span><br><span class="line">    event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> LT</span></span><br><span class="line">    event.events = EPOLLIN | EPOLLRDHUP;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (one_shot)</span><br><span class="line">        event.events |= EPOLLONESHOT;</span><br><span class="line">    <span class="built_in">epoll_ctl</span>(epollfd, EPOLL_CTL_ADD, fd, &amp;event);</span><br><span class="line">    <span class="built_in">setnonblocking</span>(fd);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>内核事件表删除事件</li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">removefd</span><span class="params">(<span class="type">int</span> epollfd, <span class="type">int</span> fd)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="built_in">epoll_ctl</span>(epollfd, EPOLL_CTL_DEL, fd, <span class="number">0</span>);</span><br><span class="line">    <span class="built_in">close</span>(fd);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>重置EPOLLONESHOT事件</li>
+</ul>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="type">void</span> <span class="title">modfd</span><span class="params">(<span class="type">int</span> epollfd, <span class="type">int</span> fd, <span class="type">int</span> ev)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    epoll_event event;</span><br><span class="line">    event.data.fd = fd;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> ET</span></span><br><span class="line">    event.events = ev | EPOLLET | EPOLLONESHOT | EPOLLRDHUP;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> LT</span></span><br><span class="line">    event.events = ev | EPOLLONESHOT | EPOLLRDHUP;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">    <span class="built_in">epoll_ctl</span>(epollfd, EPOLL_CTL_MOD, fd, &amp;event);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+<h4 id="服务器接收http请求"><a href="#服务器接收http请求" class="headerlink" title="服务器接收http请求"></a><strong><span  style="color: #00ACC1; ">服务器接收http请求</span></strong></h4><p>浏览器端发出http连接请求，主线程创建http对象接收请求并将所有数据读入对应buffer，将该对象插入任务队列，工作线程从任务队列中取出一个任务进行处理。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//创建MAX_FD个http类对象</span></span><br><span class="line">http_conn* users=<span class="keyword">new</span> http_conn[MAX_FD];</span><br><span class="line"></span><br><span class="line"><span class="comment">//创建内核事件表</span></span><br><span class="line">epoll_event events[MAX_EVENT_NUMBER];</span><br><span class="line">epollfd = <span class="built_in">epoll_create</span>(<span class="number">5</span>);</span><br><span class="line"><span class="built_in">assert</span>(epollfd != <span class="number">-1</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">//将listenfd放在epoll树上</span></span><br><span class="line"><span class="built_in">addfd</span>(epollfd, listenfd, <span class="literal">false</span>);</span><br><span class="line"></span><br><span class="line"><span class="comment">//将上述epollfd赋值给http类对象的m_epollfd属性</span></span><br><span class="line">http_conn::m_epollfd = epollfd;</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> (!stop_server)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="comment">//等待所监控文件描述符上有事件的产生</span></span><br><span class="line">    <span class="type">int</span> number = <span class="built_in">epoll_wait</span>(epollfd, events, MAX_EVENT_NUMBER, <span class="number">-1</span>);</span><br><span class="line">    <span class="keyword">if</span> (number &lt; <span class="number">0</span> &amp;&amp; errno != EINTR)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">	<span class="comment">//对所有就绪事件进行处理</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; number; i++)</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="type">int</span> sockfd = events[i].data.fd;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//处理新到的客户连接</span></span><br><span class="line">        <span class="keyword">if</span> (sockfd == listenfd)</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="keyword">struct</span> <span class="title class_">sockaddr_in</span> client_address;</span><br><span class="line">            <span class="type">socklen_t</span> client_addrlength = <span class="built_in">sizeof</span>(client_address);</span><br><span class="line"><span class="comment">//LT水平触发</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> LT</span></span><br><span class="line">            <span class="type">int</span> connfd = <span class="built_in">accept</span>(listenfd, (<span class="keyword">struct</span> sockaddr *)&amp;client_address, &amp;client_addrlength);</span><br><span class="line">            <span class="keyword">if</span> (connfd &lt; <span class="number">0</span>)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">if</span> (http_conn::m_user_count &gt;= MAX_FD)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="built_in">show_error</span>(connfd, <span class="string">&quot;Internal server busy&quot;</span>);</span><br><span class="line">                <span class="keyword">continue</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            users[connfd].<span class="built_in">init</span>(connfd, client_address);</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">//ET非阻塞边缘触发</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> ET</span></span><br><span class="line">			<span class="comment">//需要循环接收数据</span></span><br><span class="line">            <span class="keyword">while</span> (<span class="number">1</span>)</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="type">int</span> connfd = <span class="built_in">accept</span>(listenfd, (<span class="keyword">struct</span> sockaddr *)&amp;client_address, &amp;client_addrlength);</span><br><span class="line">                <span class="keyword">if</span> (connfd &lt; <span class="number">0</span>)</span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> (http_conn::m_user_count &gt;= MAX_FD)</span><br><span class="line">                &#123;</span><br><span class="line">                    <span class="built_in">show_error</span>(connfd, <span class="string">&quot;Internal server busy&quot;</span>);</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                users[connfd].<span class="built_in">init</span>(connfd, client_address);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">continue</span>;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">		<span class="comment">//处理异常事件</span></span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (events[i].events &amp; (EPOLLRDHUP | EPOLLHUP | EPOLLERR))</span><br><span class="line">        &#123;</span><br><span class="line">            <span class="comment">//服务器端关闭连接</span></span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//处理信号</span></span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> ((sockfd == pipefd[<span class="number">0</span>]) &amp;&amp; (events[i].events &amp; EPOLLIN))</span><br><span class="line">        &#123;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">//处理客户连接上接收到的数据</span></span><br><span class="line">        <span class="keyword">else</span> <span class="keyword">if</span> (events[i].events &amp; EPOLLIN)</span><br><span class="line">        &#123;</span><br><span class="line">			<span class="comment">//读入对应缓冲区</span></span><br><span class="line">            <span class="keyword">if</span> (users[sockfd].<span class="built_in">read_once</span>())</span><br><span class="line">            &#123;</span><br><span class="line">                <span class="comment">//若监测到读事件，将该事件放入请求队列</span></span><br><span class="line">                pool-&gt;<span class="built_in">append</span>(users + sockfd);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">            &#123;</span><br><span class="line">               <span class="comment">//服务器关闭连接</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">       </span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+        
+
+<div>
+<ul class="post-copyright">
+  <li class="post-copyright-author">
+    <strong>本文作者： </strong>两猿社·社长
+  </li>
+  <li class="post-copyright-link">
+    <strong>本文链接：</strong>
+    <a href="https://2yuan.club/posts/5ad337c1/" title="【TinyWebServer】详解 - 04 http连接处理（上）">https://2yuan.club/posts/5ad337c1/</a>
+  </li>
+  <li class="post-copyright-license">
+    <strong>版权声明： </strong>本博客所有文章除特别声明外，均采用 <span class="exturl" data-url="aHR0cHM6Ly9jcmVhdGl2ZWNvbW1vbnMub3JnL2xpY2Vuc2VzL2J5LW5jLXNhLzQuMC9kZWVkLnpo"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</span> 许可协议。转载请注明出处！
+  </li>
+</ul>
+</div>
+
+
+      <footer class="post-footer">
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/posts/3f776626/" rel="prev" title="【TinyWebServer】详解 - 06 http连接处理（下）">
+      <i class="fa fa-chevron-left"></i> 【TinyWebServer】详解 - 06 http连接处理（下）
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/posts/f9d605ee/" rel="next" title="【TinyWebServer】工作两年，回看WebServer">
+      【TinyWebServer】工作两年，回看WebServer <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+    <div class="comments" id="gitalk-container"></div>
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%AC%E6%96%87%E5%86%85%E5%AE%B9"><span class="nav-text">本文内容</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#epoll"><span class="nav-text">epoll</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#epoll-create%E5%87%BD%E6%95%B0"><span class="nav-text">epoll_create函数</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#epoll-ctl%E5%87%BD%E6%95%B0"><span class="nav-text">epoll_ctl函数</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#epoll-wait%E5%87%BD%E6%95%B0"><span class="nav-text">epoll_wait函数</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#select-x2F-poll-x2F-epoll"><span class="nav-text">select&#x2F;poll&#x2F;epoll</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ET%E3%80%81LT%E3%80%81EPOLLONESHOT"><span class="nav-text">ET、LT、EPOLLONESHOT</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#HTTP%E6%8A%A5%E6%96%87%E6%A0%BC%E5%BC%8F"><span class="nav-text">HTTP报文格式</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%AF%B7%E6%B1%82%E6%8A%A5%E6%96%87"><span class="nav-text">请求报文</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%93%8D%E5%BA%94%E6%8A%A5%E6%96%87"><span class="nav-text">响应报文</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#HTTP%E7%8A%B6%E6%80%81%E7%A0%81"><span class="nav-text">HTTP状态码</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9C%89%E9%99%90%E7%8A%B6%E6%80%81%E6%9C%BA"><span class="nav-text">有限状态机</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#http%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B"><span class="nav-text">http处理流程</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#http%E6%8A%A5%E6%96%87%E5%A4%84%E7%90%86%E6%B5%81%E7%A8%8B"><span class="nav-text">http报文处理流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#http%E7%B1%BB"><span class="nav-text">http类</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#epoll%E7%9B%B8%E5%85%B3%E4%BB%A3%E7%A0%81"><span class="nav-text">epoll相关代码</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%8E%A5%E6%94%B6http%E8%AF%B7%E6%B1%82"><span class="nav-text">服务器接收http请求</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="两猿社·社长"
+      src="/images/cat.jpg">
+  <p class="site-author-name" itemprop="name">两猿社·社长</p>
+  <div class="site-description" itemprop="description">分享有趣的想法和项目</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">16</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">3</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author motion-element">
+      <span class="links-of-author-item">
+        <span class="exturl" data-url="aHR0cHM6Ly9naXRodWIuY29tL3Fpbmd1b3lp" title="GitHub → https:&#x2F;&#x2F;github.com&#x2F;qinguoyi"><i class="fab fa-github fa-fw"></i>GitHub</span>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/twomonkeycluber" title="微信 → twomonkeycluber"><i class="fab fa-twitter fa-fw"></i>微信</a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="/atom.xml" title="RSS → &#x2F;atom.xml"><i class="fa fa-rss fa-fw"></i>RSS</a>
+      </span>
+  </div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+  <div class="beian"><span class="exturl" data-url="aHR0cHM6Ly9iZWlhbi5taWl0Lmdvdi5jbg==">蜀ICP备2022025123号-1 </span>
+  </div>
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2022</span>
+  <span class="author" itemprop="copyrightHolder">两猿社·社长</span>
+</div>
+  <div class="powered-by">由 <span class="exturl theme-link" data-url="aHR0cHM6Ly9oZXhvLmlv">Hexo</span> & <span class="exturl theme-link" data-url="aHR0cHM6Ly9taXN0LnRoZW1lLW5leHQub3Jn">NexT.Mist</span> 强力驱动
+  </div>
+
+        
+<div class="busuanzi-count">
+  <script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+    <span class="post-meta-item" id="busuanzi_container_site_uv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-user"></i>
+      </span>
+      <span class="site-uv" title="总访客量">
+        <span id="busuanzi_value_site_uv"></span>
+      </span>
+    </span>
+    <span class="post-meta-divider">|</span>
+    <span class="post-meta-item" id="busuanzi_container_site_pv" style="display: none;">
+      <span class="post-meta-item-icon">
+        <i class="fa fa-eye"></i>
+      </span>
+      <span class="site-pv" title="总访问量">
+        <span id="busuanzi_value_site_pv"></span>
+      </span>
+    </span>
+</div>
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/muse.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+  <script>
+    (function(){
+      var canonicalURL, curProtocol;
+      //Get the <link> tag
+      var x=document.getElementsByTagName("link");
+		//Find the last canonical URL
+		if(x.length > 0){
+			for (i=0;i<x.length;i++){
+				if(x[i].rel.toLowerCase() == 'canonical' && x[i].href){
+					canonicalURL=x[i].href;
+				}
+			}
+		}
+    //Get protocol
+	    if (!canonicalURL){
+	    	curProtocol = window.location.protocol.split(':')[0];
+	    }
+	    else{
+	    	curProtocol = canonicalURL.split(':')[0];
+	    }
+      //Get current URL if the canonical URL does not exist
+	    if (!canonicalURL) canonicalURL = window.location.href;
+	    //Assign script content. Replace current URL with the canonical URL
+      !function(){var e=/([http|https]:\/\/[a-zA-Z0-9\_\.]+\.baidu\.com)/gi,r=canonicalURL,t=document.referrer;if(!e.test(r)){var n=(String(curProtocol).toLowerCase() === 'https')?"https://sp0.baidu.com/9_Q4simg2RQJ8t7jm9iCKT-xh_/s.gif":"//api.share.baidu.com/s.gif";t?(n+="?r="+encodeURIComponent(document.referrer),r&&(n+="&l="+r)):r&&(n+="?l="+r);var i=new Image;i.src=n}}(window);})();
+  </script>
+
+
+
+
+  
+<script src="/js/local-search.js"></script>
+
+
+
+
+
+
+
+
+
+<script>
+document.querySelectorAll('.pdfobject-container').forEach(element => {
+  let url = element.dataset.target;
+  let pdfOpenParams = {
+    navpanes : 0,
+    toolbar  : 0,
+    statusbar: 0,
+    pagemode : 'thumbs',
+    view     : 'FitH'
+  };
+  let pdfOpenFragment = '#' + Object.entries(pdfOpenParams).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&');
+  let fullURL = `/lib/pdf/web/viewer.html?file=${encodeURIComponent(url)}${pdfOpenFragment}`;
+
+  if (NexT.utils.supportsPDFs()) {
+    element.innerHTML = `<embed class="pdfobject" src="${url + pdfOpenFragment}" type="application/pdf" style="height: ${element.dataset.height};">`;
+  } else {
+    element.innerHTML = `<iframe src="${fullURL}" style="height: ${element.dataset.height};" frameborder="0"></iframe>`;
+  }
+});
+</script>
+
+
+
+
+  
+
+  
+
+<link rel="stylesheet" href="//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.css">
+
+<script>
+NexT.utils.loadComments(document.querySelector('#gitalk-container'), () => {
+  NexT.utils.getScript('//cdn.jsdelivr.net/npm/gitalk@1/dist/gitalk.min.js', () => {
+    var gitalk = new Gitalk({
+      clientID    : 'c50fd42b898d2ba8a9a0',
+      clientSecret: '852286cfab484a7d72c80b3589d83c2f229c63e4',
+      repo        : 'twomonkeyclub.github.io',
+      owner       : 'twomonkeyclub',
+      admin       : ['twomonkeyclub'],
+      id          : '6fe1844d2e94f61797531534a85f59e4',
+        language: 'zh-CN',
+      distractionFreeMode: true
+    });
+    gitalk.render('gitalk-container');
+  }, window.Gitalk);
+});
+</script>
+
+</body>
+</html>
